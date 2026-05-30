@@ -1,0 +1,156 @@
+{
+  "store_id": "ST1008",
+  "store_name": "Brigade_Bangalore",
+  "city": "Bangalore",
+  "open_hours": {
+    "timezone": "Asia/Kolkata",
+    "start": "10:00",
+    "end": "22:00"
+  },
+  "recording_start": "2026-04-10T12:00:00+05:30",
+  "source_files": {
+    "layout_workbook": "Brigade Road - Store layoutc5f5d56.xlsx",
+    "pos_csv": "Brigade_Bangalore_10_April_26 (1)bc6219c.csv"
+  },
+  "notes": "Camera IDs match the provided CCTV filenames. Polygons are 1920x1080 camera-frame regions estimated from sample frames and the Brigade Road layout image; tune them after manual review for higher detection accuracy.",
+  "zones": [
+    {
+      "zone_id": "GOOD_VIBES",
+      "name": "Good Vibes"
+    },
+    {
+      "zone_id": "DERMDOC",
+      "name": "DermDoc"
+    },
+    {
+      "zone_id": "MINIMALIST_AQUALOGICA",
+      "name": "Minimalist + Aqualogica"
+    },
+    {
+      "zone_id": "LAKME_SKIN_ACCESSORIES",
+      "name": "Lakme Skin + Accessories"
+    },
+    {
+      "zone_id": "MAYBELLINE_FACES",
+      "name": "Maybelline + Faces Canada"
+    },
+    {
+      "zone_id": "LAKME_COLORBAR_SUGAR",
+      "name": "Lakme + Colorbar + Sugar"
+    },
+    {
+      "zone_id": "SWISS_BEAUTY_RENEE",
+      "name": "Swiss Beauty + Renee NY Bae"
+    },
+    {
+      "zone_id": "ALPS_STREAX",
+      "name": "Alps Goodness + Streax"
+    },
+    {
+      "zone_id": "BILLING",
+      "name": "Cash Counter"
+    },
+    {
+      "zone_id": "ENTRY",
+      "name": "Entry"
+    },
+    {
+      "zone_id": "PMU",
+      "name": "PMU / service area"
+    }
+  ],
+  "cameras": [
+    {
+      "camera_id": "CAM 1",
+      "role": "floor",
+      "description": "Main product-floor camera covering rear wall and center displays.",
+      "zones": [
+        {
+          "zone_id": "GOOD_VIBES",
+          "polygon": [[0, 0], [560, 0], [560, 420], [0, 520]]
+        },
+        {
+          "zone_id": "DERMDOC",
+          "polygon": [[560, 0], [1040, 0], [1040, 420], [560, 420]]
+        },
+        {
+          "zone_id": "MINIMALIST_AQUALOGICA",
+          "polygon": [[1040, 0], [1500, 0], [1500, 460], [1040, 420]]
+        },
+        {
+          "zone_id": "LAKME_SKIN_ACCESSORIES",
+          "polygon": [[1500, 0], [1920, 0], [1920, 520], [1500, 460]]
+        },
+        {
+          "zone_id": "LAKME_COLORBAR_SUGAR",
+          "polygon": [[300, 560], [1220, 520], [1240, 980], [260, 1020]]
+        }
+      ]
+    },
+    {
+      "camera_id": "CAM 2",
+      "role": "floor",
+      "description": "Cosmetics wall and center display camera.",
+      "zones": [
+        {
+          "zone_id": "MAYBELLINE_FACES",
+          "polygon": [[0, 120], [520, 0], [620, 620], [0, 760]]
+        },
+        {
+          "zone_id": "LAKME_COLORBAR_SUGAR",
+          "polygon": [[520, 0], [1180, 0], [1160, 620], [620, 620]]
+        },
+        {
+          "zone_id": "SWISS_BEAUTY_RENEE",
+          "polygon": [[1180, 0], [1920, 0], [1920, 680], [1160, 620]]
+        },
+        {
+          "zone_id": "ALPS_STREAX",
+          "polygon": [[360, 650], [1180, 590], [1280, 1000], [300, 1080]]
+        }
+      ]
+    },
+    {
+      "camera_id": "CAM 3",
+      "role": "entry",
+      "description": "Entry/exit camera near the glass door.",
+      "entry_line": {
+        "orientation": "vertical",
+        "position": 820,
+        "inbound": "right"
+      },
+      "zones": [
+        {
+          "zone_id": "ENTRY",
+          "polygon": [[0, 0], [1920, 0], [1920, 1080], [0, 1080]]
+        }
+      ]
+    },
+    {
+      "camera_id": "CAM 4",
+      "role": "floor",
+      "description": "Secondary PMU/service-area camera.",
+      "zones": [
+        {
+          "zone_id": "PMU",
+          "polygon": [[0, 0], [1920, 0], [1920, 1080], [0, 1080]]
+        }
+      ]
+    },
+    {
+      "camera_id": "CAM 5",
+      "role": "billing",
+      "description": "Cash counter and billing queue camera.",
+      "zones": [
+        {
+          "zone_id": "BILLING",
+          "polygon": [[0, 0], [820, 0], [840, 760], [0, 900]]
+        },
+        {
+          "zone_id": "LAKME_SKIN_ACCESSORIES",
+          "polygon": [[1180, 0], [1920, 0], [1920, 1080], [1180, 1080]]
+        }
+      ]
+    }
+  ]
+}

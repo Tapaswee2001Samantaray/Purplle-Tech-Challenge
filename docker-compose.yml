@@ -1,0 +1,14 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DB_PATH: /data/store_intelligence.db
+      STALE_FEED_SECONDS: "300"
+    volumes:
+      - store_data:/data
+
+volumes:
+  store_data:
+
