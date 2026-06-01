@@ -5,10 +5,13 @@ services:
       - "8000:8000"
     environment:
       DB_PATH: /data/store_intelligence.db
-      STALE_FEED_SECONDS: "300"
+      STALE_FEED_SECONDS: "600"
+      SEED_EVENTS_PATH: /app/events/events.jsonl
+      SEED_POS_PATH: /app/seed_data/pos_transactions.json
     volumes:
       - store_data:/data
+      - ./events:/app/events:ro
+      - ./data:/app/seed_data:ro
 
 volumes:
   store_data:
-

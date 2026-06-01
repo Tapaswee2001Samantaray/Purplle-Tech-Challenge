@@ -42,8 +42,10 @@ def compute_funnel(
                 "dropoff_from_previous": 0
                 if previous_count is None
                 else max(previous_count - count, 0),
+                "dropoff_pct_from_previous": 0.0
+                if previous_count in (None, 0)
+                else round((max(previous_count - count, 0) / previous_count) * 100, 2),
             }
         )
         previous_count = count
     return {"stages": response}
-

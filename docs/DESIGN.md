@@ -38,6 +38,10 @@ The provided POS file `Brigade_Bangalore_10_April_26 (1)bc6219c.csv` is a line-i
 
 The provided clip filenames are camera labels rather than timestamps, so `store_layout.json` includes `recording_start` as the fallback event timestamp base. The detector also supports `--clip-start` to override this when a reviewer wants to align a specific clip with the POS window.
 
+When API callers omit `start` and `end`, the API selects the day containing the store's latest event. This matches the challenge's historical CCTV files better than using the machine clock date, and avoids empty metrics when reviewers query only by `store_id`.
+
+For quick reviewer validation without private data, `sample_data/sample_events.jsonl` and `sample_data/sample_pos.json` provide a tiny synthetic event/POS set. For faster CCTV smoke tests, the detector supports `--sample-every` and `--max-frames-per-clip` so reviewers can confirm the raw-footage path without waiting for a full run.
+
 ## Live Dashboard
 
 Part E is covered by `dashboard/terminal.py`. It polls the running API every second and redraws a terminal dashboard with unique visitors, conversion rate, queue depth, funnel counts, anomalies, and health. To prove the pipeline and API are connected, generated detector events can be replayed with `--batch-size 1 --delay-seconds 1`, causing the dashboard to update as each event is ingested.

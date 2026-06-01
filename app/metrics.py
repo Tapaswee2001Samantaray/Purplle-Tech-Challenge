@@ -131,14 +131,13 @@ def compute_heatmap(events: list[dict[str, Any]]) -> dict[str, Any]:
             {
                 "zone_id": zone_id,
                 "visit_frequency": visits,
-                "normalized_visit_frequency": round(visits / max_visits, 4)
+                "normalized_visit_frequency": round((visits / max_visits) * 100, 2)
                 if max_visits
                 else 0.0,
                 "avg_dwell_ms": round(mean(dwell_by_zone[zone_id]), 2)
                 if dwell_by_zone[zone_id]
                 else 0.0,
-                "data_confidence": "LOW" if visits < 5 else "OK",
+                "data_confidence": "LOW" if visits < 20 else "OK",
             }
         )
     return {"zones": zones}
-

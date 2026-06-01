@@ -1,0 +1,10 @@
+{
+  "transactions": [
+    {
+      "store_id": "ST1008",
+      "transaction_id": "SAMPLE_TXN_001",
+      "timestamp": "2026-04-10T06:33:30Z",
+      "basket_value_inr": 1299.0
+    }
+  ]
+}

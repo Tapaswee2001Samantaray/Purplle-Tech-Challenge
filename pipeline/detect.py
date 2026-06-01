@@ -127,6 +127,7 @@ def run_video_detection(
     sample_every: int,
     dwell_seconds: int,
     clip_start: str | None,
+    max_frames_per_clip: int | None,
 ) -> None:
     try:
         import cv2
@@ -140,14 +141,18 @@ def run_video_detection(
 
     store_id, cameras = load_layout(layout)
     default_clip_start = parse_default_clip_start(layout, clip_start)
+    print(f"Loading model: {model_path}", flush=True)
     model = YOLO(model_path)
     events: list[dict] = []
     video_files = sorted(path for path in video_dir.rglob("*") if path.suffix.lower() in VIDEO_EXTENSIONS)
     if not video_files:
         raise SystemExit(f"No video clips found under {video_dir}")
+    print(f"Found {len(video_files)} video clip(s) in {video_dir}", flush=True)
 
     for video_path in video_files:
         camera = match_camera(video_path, cameras)
+        before_count = len(events)
+        print(f"Processing {video_path.name} as {camera.camera_id}/{camera.role}", flush=True)
         events.extend(
             process_clip(
                 cv2=cv2,
@@ -158,7 +163,12 @@ def run_video_detection(
                 sample_every=max(sample_every, 1),
                 dwell_seconds=max(dwell_seconds, 1),
                 default_clip_start=default_clip_start,
+                max_frames=max_frames_per_clip,
             )
+        )
+        print(
+            f"Finished {video_path.name}; emitted {len(events) - before_count} event(s)",
+            flush=True,
         )
     count = write_jsonl(events, output)
     print(f"Wrote {count} events to {output}")
@@ -173,12 +183,14 @@ def process_clip(
     sample_every: int,
     dwell_seconds: int,
     default_clip_start: datetime,
+    max_frames: int | None,
 ) -> list[dict]:
     capture = cv2.VideoCapture(str(video_path))
     if not capture.isOpened():
         raise ValueError(f"Could not open video clip: {video_path}")
 
     fps = capture.get(cv2.CAP_PROP_FPS) or 25
+    total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
     clip_start = infer_clip_start(video_path, default_clip_start)
     tracker = CentroidTracker(max_disappeared=20, max_distance=90)
     states: dict[int, TrackState] = {}
@@ -190,6 +202,12 @@ def process_clip(
         if not ok:
             break
         frame_index += 1
+        if max_frames is not None and frame_index >= max_frames:
+            print(f"  Stopped at frame limit {max_frames}", flush=True)
+            break
+        if frame_index > 0 and frame_index % 600 == 0:
+            total = f"/{total_frames}" if total_frames else ""
+            print(f"  frame {frame_index}{total}; events={len(events)}", flush=True)
         if frame_index % sample_every != 0:
             continue
         timestamp = clip_start + timedelta(seconds=frame_index / fps)
@@ -426,6 +444,7 @@ def main() -> None:
     parser.add_argument("--sample-every", type=int, default=5, help="Process every Nth frame.")
     parser.add_argument("--dwell-seconds", type=int, default=30, help="Emit dwell every N seconds.")
     parser.add_argument("--clip-start", default=None, help="Fallback clip start timestamp when filenames lack dates.")
+    parser.add_argument("--max-frames-per-clip", type=int, default=None, help="Process only the first N frames of each clip for a quick smoke test.")
     args = parser.parse_args()
 
     if args.events_jsonl:
@@ -440,6 +459,7 @@ def main() -> None:
             args.sample_every,
             args.dwell_seconds,
             args.clip_start,
+            args.max_frames_per_clip,
         )
     else:
         raise SystemExit("Provide either --events-jsonl or both --video-dir and --layout.")

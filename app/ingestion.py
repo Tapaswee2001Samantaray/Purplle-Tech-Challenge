@@ -173,6 +173,20 @@ class StoreDatabase:
             ).fetchall()
         return {row["store_id"]: row["last_event_timestamp"] for row in rows}
 
+    def last_event_timestamp(self, store_id: str) -> str | None:
+        with self._lock:
+            row = self._connection.execute(
+                """
+                SELECT MAX(timestamp) AS last_event_timestamp
+                FROM events
+                WHERE store_id = ?
+                """,
+                (store_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return row["last_event_timestamp"]
+
     @staticmethod
     def _event_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         payload = dict(row)
@@ -192,12 +206,12 @@ def ingest_event_batch(db: StoreDatabase, raw_events: Any) -> IngestResponse:
             rejected=1,
             errors=[IngestError(index=0, reason="Payload must contain an events list.")],
         )
-    if len(raw_events) > 1000:
+    if len(raw_events) > 500:
         return IngestResponse(
             accepted=0,
             duplicates=0,
             rejected=len(raw_events),
-            errors=[IngestError(index=0, reason="Batch size exceeds 1000 events.")],
+            errors=[IngestError(index=0, reason="Batch size exceeds 500 events.")],
         )
 
     accepted = duplicates = 0
@@ -259,4 +273,3 @@ def ingest_pos_batch(db: StoreDatabase, raw_items: Any) -> IngestResponse:
         rejected=len(errors),
         errors=errors,
     )
-

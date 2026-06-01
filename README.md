@@ -1,43 +1,110 @@
 # Store Intelligence Challenge
 
-This repository implements the PDF's suggested Store Intelligence layout: `pipeline/` turns CCTV-derived observations into events, and `app/` serves the production-aware analytics API.
+This is an end-to-end Store Intelligence submission: CCTV-derived events are ingested by a FastAPI service, correlated with POS transactions, and exposed as live business metrics.
 
-## Quick Start
+## Quick Evaluation Path
+
+Use this path when you want to verify the API quickly without private CCTV/POS files.
 
 ```bash
 docker compose up --build
 ```
 
-The API starts on `http://localhost:8000`.
-Swagger Doc on `http://localhost:8000/docs`
-
-## Dataset Policy
-
-The CCTV clips, downloaded challenge archive, generated event files, local SQLite databases, and model weights are intentionally not committed. The PDF marks the footage as challenge-use only, so `clips/` is kept in the repository with a placeholder while video files such as `.mp4`, `.avi`, `.mov`, and `.mkv` are ignored.
-
-Place local clips in:
+Open:
 
 ```text
-clips/
+http://localhost:8000/docs
 ```
 
-Generated detector output goes to:
+In another terminal, seed the API with synthetic sample data:
+
+```bash
+python -m pipeline.detect --events-jsonl sample_data/sample_events.jsonl --output events/sample_events.jsonl --api-url http://localhost:8000
+```
+
+```bash
+python - <<'PY'
+import json, urllib.request
+body = open("sample_data/sample_pos.json", "rb").read()
+req = urllib.request.Request(
+    "http://localhost:8000/pos/ingest",
+    data=body,
+    headers={"Content-Type": "application/json"},
+    method="POST",
+)
+print(urllib.request.urlopen(req).read().decode())
+PY
+```
+
+Check these Swagger endpoints with `store_id = ST1008`:
+
+```text
+GET /stores/ST1008/metrics
+GET /stores/ST1008/funnel
+GET /stores/ST1008/heatmap
+GET /stores/ST1008/anomalies
+GET /health
+```
+
+`start` and `end` are optional. If omitted, the API uses the latest event day for that store.
+
+## Full CCTV Pipeline
+
+Private challenge files are not committed. Put local files in these locations:
+
+```text
+clips/                         # CCTV mp4 files
+store_layout.json              # included, calibrated for ST1008 / CAM 1..CAM 5
+<path-to-pos-csv>              # provided Brigade POS CSV
+```
+
+Install optional CV dependencies:
+
+```bash
+python -m pip install -r requirements-pipeline.txt
+```
+
+Generate events from CCTV:
+
+```bash
+python -m pipeline.detect --video-dir clips --layout store_layout.json --output events/events.jsonl --model yolov8n.pt
+```
+
+Note: complete execution of this command can take several minutes. Please wait for it to finish. Runtime depends on the number of clips, clip duration, CPU/GPU availability, and model download time on the first run.
+
+For a faster smoke test:
+
+```bash
+python -m pipeline.detect --video-dir clips --layout store_layout.json --output events/events.jsonl --model yolov8n.pt --sample-every 60 --max-frames-per-clip 300
+```
+
+Load POS data:
+
+```bash
+python -m pipeline.pos_loader --csv "<path-to-pos-csv>" --output data/pos_transactions.json
+```
+
+Start or restart Docker:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+When Docker starts, it automatically loads these generated files if they exist:
 
 ```text
 events/events.jsonl
+data/pos_transactions.json
 ```
 
-## Run Tests
-
-```bash
-python -m pip install -r requirements.txt
-pytest
-```
+The loading is idempotent, so restarts do not double-count events.
 
 ## API
 
-```bash
+```text
 POST /events/ingest
+POST /pos/ingest
 GET  /stores/{store_id}/metrics
 GET  /stores/{store_id}/funnel
 GET  /stores/{store_id}/heatmap
@@ -45,96 +112,58 @@ GET  /stores/{store_id}/anomalies
 GET  /health
 ```
 
-`POST /pos/ingest` is included so POS rows can be loaded before conversion-rate queries. The provided Brigade sales CSV is a line-item export, so use the loader below to aggregate invoice rows into transactions.
+Key behavior:
 
-```bash
-python -m pipeline.pos_loader --csv "C:/Users/tapaswees/Downloads/Brigade_Bangalore_10_April_26 (1)bc6219c.csv" --api-url http://localhost:8000
-```
-
-## Detection Pipeline
-
-Verified CCTV command:
-
-```bash
-python -m pipeline.detect --video-dir clips --layout store_layout.json --output events/events.jsonl --api-url http://localhost:8000 --model yolov8n.pt
-```
-
-This command reads MP4 clips from `clips/`, uses the camera and zone definitions from `store_layout.json`, emits `events/events.jsonl`, and replays the generated events into the running API. Because the Brigade clip filenames do not include timestamps, `store_layout.json` provides `recording_start` as the fallback timestamp; override it with `--clip-start` if needed.
-
-For provided `sample_events.jsonl` or detector output:
-
-```bash
-python -m pipeline.detect --events-jsonl sample_events.jsonl --output events/events.jsonl --api-url http://localhost:8000 --delay-seconds 0.2
-```
-
-For actual CCTV clips, put clips under `clips/`, put the challenge layout file at `store_layout.json`, install the optional CV dependencies, and run:
-
-```bash
-python -m pip install -r requirements-pipeline.txt
-python -m pipeline.detect --video-dir clips --layout store_layout.json --output events/events.jsonl --api-url http://localhost:8000 --model yolov8n.pt
-```
-
-Note:- Complete Execution of this command takes some time to complete. After executing this command please wait some time to complete. The time depends based on the clips i.e clip duration and number of clips.
-
-Load the provided POS CSV after or before detection:
-
-```bash
-python -m pipeline.pos_loader --csv "C:/Users/tapaswees/Downloads/Brigade_Bangalore_10_April_26 (1)bc6219c.csv" --api-url http://localhost:8000
-```
-
-Or with the required one-command script:
-
-```bash
-EVENTS_JSONL=sample_events.jsonl API_URL=http://localhost:8000 bash pipeline/run.sh
-```
-
-For CCTV mode:
-
-```bash
-VIDEO_DIR=clips LAYOUT=store_layout.json API_URL=http://localhost:8000 MODEL=yolov8n.pt bash pipeline/run.sh
-```
-
-The detector uses YOLO person detection, centroid tracking, zone polygons from `store_layout.json`, and optional entry-line settings to emit structured events. Full CCTV processing can take several minutes on CPU. For best accuracy, calibrate `store_layout.json` with camera IDs matching clip filenames, zone polygons, and an entry threshold line.
-
-After the detector finishes, validate results in Swagger UI at `http://localhost:8000/docs` with:
-
-```text
-GET /stores/ST1008/metrics
-GET /stores/ST1008/funnel
-GET /stores/ST1008/heatmap
-GET /stores/ST1008/anomalies
-```
+- `POST /events/ingest` accepts batches up to 500 events.
+- Event ingestion is idempotent by `event_id`.
+- Staff events are stored but excluded from customer metrics.
+- POS conversion is inferred by billing-zone presence within 60 seconds of a transaction.
+- Metrics are computed from the current event store, not stale cached values.
 
 ## Live Dashboard Bonus
 
-Part E is implemented as a terminal dashboard that polls the live API while detector events are replayed in simulated real time.
-
-Terminal 1: start the API.
+Terminal 1:
 
 ```bash
 docker compose up --build
 ```
 
-Terminal 2: start the dashboard.
+Terminal 2:
 
 ```bash
-python -m dashboard.terminal --api-url http://localhost:8000 --store-id ST1008 --start 2026-04-10T00:00:00Z --end 2026-04-11T00:00:00Z
+python -m dashboard.terminal
 ```
 
-Terminal 3: replay detector output one event at a time.
+Terminal 3:
 
 ```bash
 python -m pipeline.detect --events-jsonl events/events.jsonl --output events/live_replay.jsonl --api-url http://localhost:8000 --batch-size 1 --delay-seconds 1
 ```
 
-If you want to regenerate events from CCTV first:
+The terminal dashboard updates unique visitors, conversion rate, queue depth, funnel counts, anomalies, and feed health as events arrive.
+
+## Dataset Policy
+
+The following are intentionally ignored and must not be committed:
+
+```text
+clips/*.mp4
+events/
+data/
+*.csv
+*.xlsx
+*.pt
+*.db
+```
+
+This follows the challenge-use-only license for CCTV footage and supporting datasets. The repository includes only code, docs, layout metadata, tests, and small synthetic sample data.
+
+## Tests
 
 ```bash
-python -m pipeline.detect --video-dir clips --layout store_layout.json --output events/events.jsonl --model yolov8n.pt
+python -m pip install -r requirements.txt
+pytest -q
 ```
-Note:- Complete Execution of this command takes some time to complete. After executing this command please wait some time to complete. The time depends based on the clips i.e clip duration and number of clips.
-
-The dashboard updates unique visitors, conversion rate, queue depth, funnel counts, anomalies, and feed health as events arrive.
 
 ## Repository Layout
 
@@ -143,6 +172,7 @@ pipeline/
   detect.py
   tracker.py
   emit.py
+  pos_loader.py
   run.sh
 app/
   main.py
@@ -152,28 +182,11 @@ app/
   funnel.py
   anomalies.py
   health.py
+dashboard/
+  terminal.py
+sample_data/
 tests/
 docs/
 docker-compose.yml
 README.md
-```
-
-## Event Schema
-
-Each event uses:
-
-```json
-{
-  "event_id": "uuid",
-  "store_id": "ST1008",
-  "camera_id": "CAM 3",
-  "visitor_id": "VIS_caf",
-  "event_type": "ZONE_DWELL",
-  "timestamp": "2026-05-30T10:00:00Z",
-  "zone_id": "SKINCARE",
-  "dwell_ms": 30000,
-  "is_staff": false,
-  "confidence": 0.91,
-  "metadata": {"queue_depth": null, "session_seq": 3}
-}
 ```

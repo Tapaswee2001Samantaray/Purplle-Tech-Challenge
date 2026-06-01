@@ -12,6 +12,7 @@ MODEL="${MODEL:-yolov8n.pt}"
 SAMPLE_EVERY="${SAMPLE_EVERY:-5}"
 DWELL_SECONDS="${DWELL_SECONDS:-30}"
 CLIP_START="${CLIP_START:-}"
+MAX_FRAMES_PER_CLIP="${MAX_FRAMES_PER_CLIP:-}"
 
 if [[ -n "$EVENTS_JSONL" ]]; then
   python -m pipeline.detect \
@@ -34,6 +35,9 @@ else
   )
   if [[ -n "$CLIP_START" ]]; then
     args+=(--clip-start "$CLIP_START")
+  fi
+  if [[ -n "$MAX_FRAMES_PER_CLIP" ]]; then
+    args+=(--max-frames-per-clip "$MAX_FRAMES_PER_CLIP")
   fi
   python -m pipeline.detect "${args[@]}"
 fi

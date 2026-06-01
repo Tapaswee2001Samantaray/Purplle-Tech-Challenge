@@ -42,6 +42,22 @@ def test_ingest_partial_success(client, event):
     assert body["errors"][0]["index"] == 1
 
 
+def test_ingest_rejects_batches_over_500(client, event):
+    payload = {
+        "events": [
+            event(f"evt-{index}", f"VIS_{index}", "ENTRY", "2026-05-30T10:00:00Z")
+            for index in range(501)
+        ]
+    }
+
+    response = client.post("/events/ingest", json=payload)
+
+    body = response.json()
+    assert body["accepted"] == 0
+    assert body["rejected"] == 501
+    assert "500" in body["errors"][0]["reason"]
+
+
 def seed_purchase_flow(client, event):
     client.post(
         "/events/ingest",
@@ -117,6 +133,17 @@ def test_metrics_exclude_staff_and_correlate_pos(client, event):
     assert body["queue_depth"] == 3
 
 
+def test_metrics_without_window_uses_latest_event_day(client, event):
+    seed_purchase_flow(client, event)
+
+    response = client.get("/stores/ST1008/metrics")
+
+    body = response.json()
+    assert body["unique_visitors"] == 1
+    assert body["converted_visitors"] == 1
+    assert body["queue_depth"] == 3
+
+
 def test_funnel_uses_session_not_raw_events(client, event):
     seed_purchase_flow(client, event)
 
@@ -135,6 +162,18 @@ def test_funnel_uses_session_not_raw_events(client, event):
         "billing_queue": 1,
         "purchase": 1,
     }
+    purchase_stage = response.json()["stages"][-1]
+    assert "dropoff_pct_from_previous" in purchase_stage
+
+
+def test_heatmap_uses_0_to_100_normalization_and_confidence(client, event):
+    seed_purchase_flow(client, event)
+
+    response = client.get("/stores/ST1008/heatmap")
+
+    zones = {zone["zone_id"]: zone for zone in response.json()["zones"]}
+    assert zones["SKINCARE"]["normalized_visit_frequency"] == 100
+    assert zones["SKINCARE"]["data_confidence"] == "LOW"
 
 
 def test_zero_purchase_store_returns_zero_not_null(client, event):
