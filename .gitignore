@@ -9,7 +9,6 @@ htmlcov/
 
 # Challenge data and generated runtime artifacts are intentionally not committed.
 data/
-events/
 clips/*
 !clips/.gitkeep
 *.mp4
